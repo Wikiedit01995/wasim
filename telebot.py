@@ -9,6 +9,7 @@ from stt import stt
 from tts import tts
 from teleToken import TOKEN
 import os
+from uuid import uuid4
 
 
 # Run when /start is sent
@@ -64,8 +65,40 @@ async def get_voice_message(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             context.user_data.get("location"),
         )
         await update.message.reply_text(response)
+
+        response_audio_path = tts(
+            response,
+            lang="hi-IN",
+            filename=f"voice_response_{uuid4().hex}.wav",
+        )
+        try:
+            with open(response_audio_path, "rb") as audio_file:
+                await update.message.reply_voice(voice=audio_file)
+        finally:
+            os.remove(response_audio_path)
     finally:
         os.remove(audio_path)
+
+
+async def get_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Answer a text weather request with text and synthesized voice."""
+    response = process_text_message(
+        update.message.text,
+        str(update.effective_user.id),
+        context.user_data.get("location"),
+    )
+    await update.message.reply_text(f"TRANSCRIPT: {response}")
+
+    response_audio_path = tts(
+        response,
+        lang="hi-IN",
+        filename=f"text_response_{uuid4().hex}.wav",
+    )
+    try:
+        with open(response_audio_path, "rb") as audio_file:
+            await update.message.reply_voice(voice=audio_file)
+    finally:
+        os.remove(response_audio_path)
 
 
 # Send out weather info for given location
@@ -113,6 +146,7 @@ def main() -> None:
     # Register message handlers
     application.add_handler(MessageHandler(filters.LOCATION, get_location))
     application.add_handler(MessageHandler(filters.VOICE, get_voice_message))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, get_text_message))
 
     # Run the bot
     application.run_polling(allowed_updates=Update.ALL_TYPES)
