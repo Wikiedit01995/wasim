@@ -5,3 +5,4 @@ __pycache__/
 .env
 teleToken.py
 secrets.env
+requirements.txt
